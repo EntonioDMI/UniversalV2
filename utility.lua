@@ -13,36 +13,54 @@ UtilityModule.Settings = {
     fogColor = Color3.fromRGB(192, 192, 192)
 }
 
+-- Store original lighting settings
 local originalSettings = {}
+
+-- Safe set function for lighting properties
+local function safeSetLighting(property, value)
+    local success, err = pcall(function()
+        Lighting[property] = value
+    end)
+    if not success then
+        warn("Failed to set Lighting." .. property .. ": " .. err)
+    end
+end
 
 -- Settings observer
 local function updateSettings(setting, value)
     UtilityModule.Settings[setting] = value
     
     if setting == "customTimeEnabled" then
-        Lighting.TimeOfDay = value and UtilityModule.Settings.timeOfDay or originalSettings.TimeOfDay
+        safeSetLighting("TimeOfDay", value and UtilityModule.Settings.timeOfDay or originalSettings.TimeOfDay)
     elseif setting == "timeOfDay" and UtilityModule.Settings.customTimeEnabled then
-        Lighting.TimeOfDay = value
+        safeSetLighting("TimeOfDay", value)
     elseif setting == "customLightingEnabled" then
-        Lighting.AmbientColor = value and UtilityModule.Settings.ambientColor or originalSettings.AmbientColor
+        if value then
+            safeSetLighting("Ambient", UtilityModule.Settings.ambientColor)
+            safeSetLighting("OutdoorAmbient", UtilityModule.Settings.ambientColor)
+        else
+            safeSetLighting("Ambient", originalSettings.Ambient)
+            safeSetLighting("OutdoorAmbient", originalSettings.OutdoorAmbient)
+        end
     elseif setting == "ambientColor" and UtilityModule.Settings.customLightingEnabled then
-        Lighting.AmbientColor = value
+        safeSetLighting("Ambient", value)
+        safeSetLighting("OutdoorAmbient", value)
     elseif setting == "customFogEnabled" then
         if value then
-            Lighting.FogStart = UtilityModule.Settings.fogStart
-            Lighting.FogEnd = UtilityModule.Settings.fogEnd
-            Lighting.FogColor = UtilityModule.Settings.fogColor
+            safeSetLighting("FogStart", UtilityModule.Settings.fogStart)
+            safeSetLighting("FogEnd", UtilityModule.Settings.fogEnd)
+            safeSetLighting("FogColor", UtilityModule.Settings.fogColor)
         else
-            Lighting.FogStart = originalSettings.FogStart
-            Lighting.FogEnd = originalSettings.FogEnd
-            Lighting.FogColor = originalSettings.FogColor
+            safeSetLighting("FogStart", originalSettings.FogStart)
+            safeSetLighting("FogEnd", originalSettings.FogEnd)
+            safeSetLighting("FogColor", originalSettings.FogColor)
         end
     elseif setting == "fogStart" and UtilityModule.Settings.customFogEnabled then
-        Lighting.FogStart = value
+        safeSetLighting("FogStart", value)
     elseif setting == "fogEnd" and UtilityModule.Settings.customFogEnabled then
-        Lighting.FogEnd = value
+        safeSetLighting("FogEnd", value)
     elseif setting == "fogColor" and UtilityModule.Settings.customFogEnabled then
-        Lighting.FogColor = value
+        safeSetLighting("FogColor", value)
     end
 end
 
