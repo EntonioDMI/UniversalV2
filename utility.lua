@@ -13,14 +13,7 @@ UtilityModule.Settings = {
     fogColor = Color3.fromRGB(192, 192, 192)
 }
 
--- Store original lighting settings
-local originalSettings = {
-    TimeOfDay = Lighting.TimeOfDay,
-    AmbientColor = Lighting.AmbientColor,
-    FogStart = Lighting.FogStart,
-    FogEnd = Lighting.FogEnd,
-    FogColor = Lighting.FogColor
-}
+local originalSettings = {}
 
 -- Settings observer
 local function updateSettings(setting, value)
@@ -58,12 +51,9 @@ function UtilityModule:UpdateSetting(setting, value)
     updateSettings(setting, value)
 end
 
-function UtilityModule:Initialize()
-    originalSettings.TimeOfDay = Lighting.TimeOfDay
-    originalSettings.AmbientColor = Lighting.AmbientColor
-    originalSettings.FogStart = Lighting.FogStart
-    originalSettings.FogEnd = Lighting.FogEnd
-    originalSettings.FogColor = Lighting.FogColor
+-- Initialize with settings from MainScript
+function UtilityModule:SetInitialSettings(settings)
+    originalSettings = settings
 end
 
 return UtilityModule
