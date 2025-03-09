@@ -2,6 +2,7 @@ local VisualsModule = {}
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
 -- Module Configuration
 VisualsModule.Settings = {
@@ -26,6 +27,9 @@ VisualsModule.Settings = {
 local highlights = {}
 local espObjects = {}
 local rainbowHue = 0
+
+-- ESP Drawing Objects
+local espDrawings = {}
 
 -- Helper Functions
 local function isTeammate(player)
@@ -61,14 +65,152 @@ local function createHighlight(player)
     return highlight
 end
 
+-- ESP Drawing Functions
+local function createESPDrawings(player)
+    if espDrawings[player] then
+        for _, drawing in pairs(espDrawings[player]) do
+            drawing:Remove()
+        end
+    end
+
+    espDrawings[player] = {
+        box = {
+            outline = Drawing.new("Square"),
+            main = Drawing.new("Square")
+        },
+        healthBar = {
+            outline = Drawing.new("Square"),
+            main = Drawing.new("Square")
+        },
+        name = Drawing.new("Text"),
+        distance = Drawing.new("Text"),
+        tracer = Drawing.new("Line")
+    }
+
+    -- Box settings
+    local box = espDrawings[player].box
+    box.outline.Thickness = 3
+    box.outline.Color = Color3.new(0, 0, 0)
+    box.main.Thickness = 1
+    box.main.Color = Color3.new(1, 1, 1)
+
+    -- Health bar settings
+    local healthBar = espDrawings[player].healthBar
+    healthBar.outline.Thickness = 3
+    healthBar.outline.Color = Color3.new(0, 0, 0)
+    healthBar.main.Thickness = 1
+    healthBar.main.Color = Color3.new(0, 1, 0)
+
+    -- Name settings
+    local name = espDrawings[player].name
+    name.Size = 14
+    name.Center = true
+    name.Outline = true
+    name.Color = Color3.new(1, 1, 1)
+
+    -- Distance settings
+    local distance = espDrawings[player].distance
+    distance.Size = 12
+    distance.Center = true
+    distance.Outline = true
+    distance.Color = Color3.new(1, 1, 1)
+
+    -- Tracer settings
+    local tracer = espDrawings[player].tracer
+    tracer.Thickness = 1
+    tracer.Color = Color3.new(1, 1, 1)
+end
+
+local function updateESPDrawings(player)
+    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") or not espDrawings[player] then return end
+
+    local character = player.Character
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoidRootPart or not humanoid then return end
+
+    local pos, onScreen = Camera:WorldToViewportPoint(humanoidRootPart.Position)
+    if not onScreen then
+        for _, category in pairs(espDrawings[player]) do
+            if type(category) == "table" then
+                category.outline.Visible = false
+                category.main.Visible = false
+            else
+                category.Visible = false
+            end
+        end
+        return
+    end
+
+    -- Calculate box dimensions
+    local size = (Camera:WorldToViewportPoint(humanoidRootPart.Position + Vector3.new(3,7,0)).Y - Camera:WorldToViewportPoint(humanoidRootPart.Position + Vector3.new(-3,-3,0)).Y) / 2
+    local boxSize = Vector2.new(size * 1.5, size * 2)
+    local boxPosition = Vector2.new(pos.X - size * 1.5 / 2, pos.Y - size)
+
+    -- Update box
+    local box = espDrawings[player].box
+    box.outline.Size = boxSize
+    box.outline.Position = boxPosition
+    box.outline.Visible = VisualsModule.Settings.espShowBoxes
+    box.main.Size = boxSize
+    box.main.Position = boxPosition
+    box.main.Visible = VisualsModule.Settings.espShowBoxes
+
+    -- Update health bar
+    local healthBar = espDrawings[player].healthBar
+    local healthBarSize = Vector2.new(2, boxSize.Y * (humanoid.Health / humanoid.MaxHealth))
+    local healthBarPosition = Vector2.new(boxPosition.X - 5, boxPosition.Y + (boxSize.Y - healthBarSize.Y))
+    
+    healthBar.outline.Size = Vector2.new(4, boxSize.Y)
+    healthBar.outline.Position = Vector2.new(healthBarPosition.X - 1, boxPosition.Y)
+    healthBar.outline.Visible = VisualsModule.Settings.espShowHealth
+    
+    healthBar.main.Size = healthBarSize
+    healthBar.main.Position = healthBarPosition
+    healthBar.main.Visible = VisualsModule.Settings.espShowHealth
+    healthBar.main.Color = Color3.fromHSV(humanoid.Health / humanoid.MaxHealth * 0.3, 1, 1)
+
+    -- Update name
+    local name = espDrawings[player].name
+    name.Text = player.Name
+    name.Position = Vector2.new(boxPosition.X + boxSize.X/2, boxPosition.Y - 20)
+    name.Visible = VisualsModule.Settings.espShowNames
+
+    -- Update distance
+    local distance = espDrawings[player].distance
+    local playerDistance = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - humanoidRootPart.Position).Magnitude)
+    distance.Text = tostring(playerDistance) .. "m"
+    distance.Position = Vector2.new(boxPosition.X + boxSize.X/2, boxPosition.Y + boxSize.Y)
+    distance.Visible = VisualsModule.Settings.espShowDistance
+
+    -- Update tracer
+    local tracer = espDrawings[player].tracer
+    tracer.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+    tracer.To = Vector2.new(pos.X, pos.Y)
+    tracer.Visible = VisualsModule.Settings.espShowTracers
+end
+
 -- ESP Functions
 function VisualsModule:ToggleESP(state)
     self.Settings.espEnabled = state
     if not state then
-        for _, obj in pairs(espObjects) do
-            obj:Destroy()
+        for _, playerDrawings in pairs(espDrawings) do
+            for _, category in pairs(playerDrawings) do
+                if type(category) == "table" then
+                    category.outline:Remove()
+                    category.main:Remove()
+                else
+                    category:Remove()
+                end
+            end
         end
-        table.clear(espObjects)
+        table.clear(espDrawings)
+    else
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                createESPDrawings(player)
+            end
+        end
     end
 end
 
@@ -187,20 +329,28 @@ end
 -- Update Loop
 local lastRainbowUpdate = 0
 RunService.RenderStepped:Connect(function(deltaTime)
-    if VisualsModule.Settings.highlightEnabled then
-        if VisualsModule.Settings.rainbowMode then
-            -- Update rainbow color every 0.1 seconds
-            lastRainbowUpdate = lastRainbowUpdate + deltaTime
-            if lastRainbowUpdate >= 0.1 then
-                lastRainbowUpdate = 0
-                rainbowHue = (rainbowHue + 0.01 * VisualsModule.Settings.rainbowSpeed) % 1
-                local rainbowColor = Color3.fromHSV(rainbowHue, 1, 1)
-                
-                for player, highlight in pairs(highlights) do
-                    if highlight and not isTeammate(player) then
-                        highlight.FillColor = rainbowColor
-                        highlight.OutlineColor = rainbowColor
-                    end
+    -- Update ESP
+    if VisualsModule.Settings.espEnabled then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                updateESPDrawings(player)
+            end
+        end
+    end
+
+    -- Update Highlights
+    if VisualsModule.Settings.highlightEnabled and VisualsModule.Settings.rainbowMode then
+        -- Update rainbow color every 0.1 seconds
+        lastRainbowUpdate = lastRainbowUpdate + deltaTime
+        if lastRainbowUpdate >= 0.1 then
+            lastRainbowUpdate = 0
+            rainbowHue = (rainbowHue + 0.01 * VisualsModule.Settings.rainbowSpeed) % 1
+            local rainbowColor = Color3.fromHSV(rainbowHue, 1, 1)
+            
+            for player, highlight in pairs(highlights) do
+                if highlight and not isTeammate(player) then
+                    highlight.FillColor = rainbowColor
+                    highlight.OutlineColor = rainbowColor
                 end
             end
         end
@@ -210,6 +360,10 @@ end)
 -- Player Added/Removed Handlers
 Players.PlayerAdded:Connect(function(player)
     if player ~= LocalPlayer then
+        if VisualsModule.Settings.espEnabled then
+            createESPDrawings(player)
+        end
+        
         -- Wait for character to load
         player.CharacterAdded:Connect(function(character)
             if VisualsModule.Settings.highlightEnabled then
@@ -237,6 +391,18 @@ Players.PlayerRemoving:Connect(function(player)
     if highlights[player] then
         highlights[player]:Destroy()
         highlights[player] = nil
+    end
+    
+    if espDrawings[player] then
+        for _, category in pairs(espDrawings[player]) do
+            if type(category) == "table" then
+                category.outline:Remove()
+                category.main:Remove()
+            else
+                category:Remove()
+            end
+        end
+        espDrawings[player] = nil
     end
 end)
 
