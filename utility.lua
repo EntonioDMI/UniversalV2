@@ -16,7 +16,7 @@ UtilityModule.Settings = {
 -- Store original lighting settings
 local originalSettings = {
     TimeOfDay = Lighting.TimeOfDay,
-    Ambient = Lighting.Ambient, -- Fixed: Using correct property
+    AmbientColor = Lighting.AmbientColor,
     FogStart = Lighting.FogStart,
     FogEnd = Lighting.FogEnd,
     FogColor = Lighting.FogColor
@@ -31,9 +31,9 @@ local function updateSettings(setting, value)
     elseif setting == "timeOfDay" and UtilityModule.Settings.customTimeEnabled then
         Lighting.TimeOfDay = value
     elseif setting == "customLightingEnabled" then
-        Lighting.Ambient = value and UtilityModule.Settings.ambientColor or originalSettings.Ambient -- Fixed: Using correct property
+        Lighting.AmbientColor = value and UtilityModule.Settings.ambientColor or originalSettings.AmbientColor
     elseif setting == "ambientColor" and UtilityModule.Settings.customLightingEnabled then
-        Lighting.Ambient = value -- Fixed: Using correct property
+        Lighting.AmbientColor = value
     elseif setting == "customFogEnabled" then
         if value then
             Lighting.FogStart = UtilityModule.Settings.fogStart
@@ -60,7 +60,7 @@ end
 
 function UtilityModule:Initialize()
     originalSettings.TimeOfDay = Lighting.TimeOfDay
-    originalSettings.Ambient = Lighting.Ambient -- Fixed: Using correct property
+    originalSettings.AmbientColor = Lighting.AmbientColor
     originalSettings.FogStart = Lighting.FogStart
     originalSettings.FogEnd = Lighting.FogEnd
     originalSettings.FogColor = Lighting.FogColor
